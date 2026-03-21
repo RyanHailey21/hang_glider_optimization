@@ -28,10 +28,19 @@ WING_AREAL_DENSITY_KG_PER_M2 = 0.18
 AIRFOIL_DIR = pathlib.Path("./airfoils")
 
 # Candidate airfoils to compare. These are local DAT filenames, not built-in names.
+# MH45/MH60: Müller-Heinz flying wing sections — good L/D, low drag bucket
+# RG15:      René Gagnon 15 — one of the best low-Re glider sections
+# SD7037:    Selig-Donovan — excellent low-Re RC sailplane performance
+# S5010:     Selig flying wing — reflexed, designed specifically for tailless aircraft
+# E387:      Eppler 387 — classic low-Re benchmark, well characterized
 AIRFOIL_FILES = {
     "mh45": AIRFOIL_DIR / "mh45.dat",
     "mh60": AIRFOIL_DIR / "mh60.dat",
     "fauvel": AIRFOIL_DIR / "fauvel.dat",
+    "rg15": AIRFOIL_DIR / "rg15.dat",
+    "sd7037": AIRFOIL_DIR / "sd7037.dat",
+    "s5010": AIRFOIL_DIR / "s5010.dat",
+    "e387": AIRFOIL_DIR / "e387.dat",
 }
 
 # Fallback built-in/UIUC airfoil names if local DAT files are not present.
@@ -40,6 +49,10 @@ BUILTIN_AIRFOIL_FALLBACKS = {
     "mh45": "naca2412",
     "mh60": "naca4412",
     "fauvel": "naca0012",
+    "rg15": "rg15",
+    "sd7037": "sd7037",
+    "s5010": "s5010",
+    "e387": "e387",
 }
 
 # If a local DAT is missing, save the fallback geometry to that DAT path for future runs.
@@ -100,6 +113,18 @@ MIN_REMAINING_ALTITUDE_M = 1.0
 # Save a simple geometry plot for the winning airfoil.
 PLOT_WINNER_AIRFOIL = True
 WINNER_AIRFOIL_PLOT_PATH = pathlib.Path("./outputs/winner_airfoil.png")
+
+# 3D top-down/isometric view of the winning wing geometry.
+PLOT_WINNER_3D = True
+WINNER_3D_PLOT_PATH = pathlib.Path("./outputs/winner_3d_wing.png")
+
+# Airfoil polar curves (CL, CD, L/D vs alpha) at the operating Reynolds number.
+PLOT_WINNER_POLARS = True
+WINNER_POLARS_PLOT_PATH = pathlib.Path("./outputs/winner_polars.png")
+
+# 2D glide path: altitude vs horizontal distance, including acceleration phase.
+PLOT_WINNER_FLIGHT_PATH = True
+WINNER_FLIGHT_PATH_PLOT_PATH = pathlib.Path("./outputs/winner_flight_path.png")
 
 # Elevon starts at this span fraction and extends to tip.
 ELEVON_START_SPAN_FRACTION = 0.60

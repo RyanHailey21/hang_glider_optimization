@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Tuple
@@ -12,15 +13,27 @@ from .config import (
     ELEVON_HINGE_POINT_FRACTION,
     GENERATE_XFOIL_POLARS,
     OBJECTIVE_MODE,
+    PLOT_WINNER_3D,
     PLOT_WINNER_AIRFOIL,
+    PLOT_WINNER_FLIGHT_PATH,
+    PLOT_WINNER_POLARS,
     PRECOMPUTE_POLARS_ONLY,
     REFLEX_CANDIDATES_DEG,
     VERBOSE,
+    WINNER_3D_PLOT_PATH,
     WINNER_AIRFOIL_PLOT_PATH,
+    WINNER_FLIGHT_PATH_PLOT_PATH,
+    WINNER_POLARS_PLOT_PATH,
     XFOIL_COMMAND,
 )
+from .aircraft import make_airplane
 from .models import DesignResult
-from .plotting import save_airfoil_geometry_plot
+from .plotting import (
+    save_airfoil_geometry_plot,
+    save_flight_path_plot,
+    save_polar_plot,
+    save_wing_3d_plot,
+)
 from .result_cache import case_cache_key, load_cached_result, save_cached_result
 from .reporting import print_result, print_top_results
 from .solver import solve_one_case
@@ -73,12 +86,17 @@ def main() -> None:
     ]
 
     results: List[DesignResult] = []
-    with ThreadPoolExecutor() as executor:
+    max_workers = min(len(cases), os.cpu_count() or 4)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(_solve_case, case) for case in cases]
         for future in as_completed(futures):
-            result = future.result()
-            if result is not None:
-                results.append(result)
+            try:
+                result = future.result()
+                if result is not None:
+                    results.append(result)
+            except Exception as e:
+                if VERBOSE:
+                    print(f"[ERROR] Unexpected exception in worker: {e}")
 
     if not results:
         raise RuntimeError("No feasible design found. Loosen bounds or check airfoil/XFoil setup.")
@@ -93,14 +111,37 @@ def main() -> None:
     # 4) Optional: print ranked shortlist
     print_top_results(results, n=5)
 
-    if PLOT_WINNER_AIRFOIL:
-        winning_airfoil = airfoils.get(best.airfoil_name)
-        if winning_airfoil is not None:
-            path = save_airfoil_geometry_plot(
-                airfoil=winning_airfoil,
-                title=f"Winning Airfoil: {best.airfoil_name} (reflex {best.reflex_deg:+.1f} deg)",
-                output_path=WINNER_AIRFOIL_PLOT_PATH,
-                reflex_deg=best.reflex_deg,
-                hinge_x=ELEVON_HINGE_POINT_FRACTION,
-            )
-            print(f"\nSaved winner airfoil plot: {path}")
+    winning_airfoil = airfoils.get(best.airfoil_name)
+
+    if PLOT_WINNER_AIRFOIL and winning_airfoil is not None:
+        path = save_airfoil_geometry_plot(
+            airfoil=winning_airfoil,
+            title=f"Winning Airfoil: {best.airfoil_name} (reflex {best.reflex_deg:+.1f} deg)",
+            output_path=WINNER_AIRFOIL_PLOT_PATH,
+            reflex_deg=best.reflex_deg,
+            hinge_x=ELEVON_HINGE_POINT_FRACTION,
+        )
+        print(f"Saved airfoil plot:      {path}")
+
+    if PLOT_WINNER_3D and winning_airfoil is not None:
+        winner_airplane, _, _ = make_airplane(
+            airfoil=winning_airfoil,
+            reflex_deg=best.reflex_deg,
+            span_m=best.span_m,
+            root_chord_m=best.root_chord_m,
+            taper=best.taper,
+            sweep_deg=best.sweep_deg,
+            washout_deg=best.washout_deg,
+            dihedral_deg=best.dihedral_deg,
+            cg_x_m=best.cg_x_m,
+        )
+        path = save_wing_3d_plot(winner_airplane, best, WINNER_3D_PLOT_PATH)
+        print(f"Saved 3D wing plot:      {path}")
+
+    if PLOT_WINNER_POLARS and winning_airfoil is not None:
+        path = save_polar_plot(winning_airfoil, best, WINNER_POLARS_PLOT_PATH)
+        print(f"Saved polar plot:        {path}")
+
+    if PLOT_WINNER_FLIGHT_PATH:
+        path = save_flight_path_plot(best, WINNER_FLIGHT_PATH_PLOT_PATH)
+        print(f"Saved flight path plot:  {path}")
