@@ -94,7 +94,7 @@ def solve_one_case(
         op_point=op_point,
         xyz_ref=[cg_x_m, 0.0, 0.0],
         run_symmetric_if_possible=False,
-        spanwise_resolution=10,
+        spanwise_resolution=6,
     )
 
     aero = analysis.run_with_stability_derivatives(alpha=True, beta=False, p=False, q=False, r=False)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import shutil
-from typing import Dict, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Optional, Tuple
 
 import aerosandbox as asb
 
@@ -47,24 +48,35 @@ def main() -> None:
         print("\nPolar precomputation complete. Exiting before optimization.")
         return
 
-    # 2) Loop over fixed reflex candidates and solve one continuous optimization each time.
-    results: List[DesignResult] = []
-    for airfoil_name, airfoil in airfoils.items():
-        for reflex_deg in REFLEX_CANDIDATES_DEG:
-            cache_key = case_cache_key(airfoil_name=airfoil_name, reflex_deg=reflex_deg, airfoil=airfoil)
-            result = load_cached_result(cache_key)
-            if result is not None:
-                if VERBOSE:
-                    print(f"[CACHE] Using cached optimization result for {airfoil_name} reflex={reflex_deg:+.1f}")
-            else:
-                result = solve_one_case(
-                    airfoil_name=airfoil_name,
-                    airfoil=airfoil,
-                    reflex_deg=reflex_deg,
-                )
-                if result is not None:
-                    save_cached_result(cache_key, result)
+    # 2) Solve all (airfoil, reflex) cases in parallel.
+    def _solve_case(args: Tuple) -> Optional[DesignResult]:
+        airfoil_name, airfoil, reflex_deg = args
+        cache_key = case_cache_key(airfoil_name=airfoil_name, reflex_deg=reflex_deg, airfoil=airfoil)
+        result = load_cached_result(cache_key)
+        if result is not None:
+            if VERBOSE:
+                print(f"[CACHE] Using cached optimization result for {airfoil_name} reflex={reflex_deg:+.1f}")
+            return result
+        result = solve_one_case(
+            airfoil_name=airfoil_name,
+            airfoil=airfoil,
+            reflex_deg=reflex_deg,
+        )
+        if result is not None:
+            save_cached_result(cache_key, result)
+        return result
 
+    cases = [
+        (airfoil_name, airfoil, reflex_deg)
+        for airfoil_name, airfoil in airfoils.items()
+        for reflex_deg in REFLEX_CANDIDATES_DEG
+    ]
+
+    results: List[DesignResult] = []
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(_solve_case, case) for case in cases]
+        for future in as_completed(futures):
+            result = future.result()
             if result is not None:
                 results.append(result)
 
