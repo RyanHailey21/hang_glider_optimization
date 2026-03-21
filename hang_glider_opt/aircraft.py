@@ -3,7 +3,7 @@ from __future__ import annotations
 import aerosandbox as asb
 import aerosandbox.numpy as np
 
-from .config import ELEVON_START_SPAN_FRACTION
+from .config import ELEVON_HINGE_POINT_FRACTION, ELEVON_START_SPAN_FRACTION
 from .geometry import mean_aerodynamic_chord, trapezoid_area
 
 
@@ -44,7 +44,7 @@ def make_airplane(
         name="elevon",
         symmetric=True,
         deflection=reflex_deg,
-        hinge_point=0.70,
+        hinge_point=ELEVON_HINGE_POINT_FRACTION,
         trailing_edge=True,
     )
 

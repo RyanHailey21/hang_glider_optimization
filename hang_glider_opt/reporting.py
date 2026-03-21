@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
+from .config import OBJECTIVE_MODE
 from .models import DesignResult
 
 
@@ -29,16 +30,24 @@ def print_result(r: DesignResult) -> None:
     print(f"CL / CD / Cm:         {r.CL:.4f} / {r.CD:.4f} / {r.Cm:.4f}")
     print(f"Cma:                  {r.Cma:.4f}")
     print(f"Estimated sink rate:  {r.sink_rate_mps:.3f} m/s")
-    print(f"Time from 60 ft:      {r.estimated_time_from_60ft_s:.2f} s")
+    print(f"Steady time from 60ft:{r.estimated_time_from_60ft_s:.2f} s")
+    print(f"Accel height loss:    {r.accel_height_loss_m:.2f} m")
+    print(f"Total time proxy:     {r.estimated_total_time_from_60ft_s:.2f} s")
 
 
 def print_top_results(results: List[DesignResult], n: int = 5) -> None:
+    if OBJECTIVE_MODE == "drop_time_with_accel":
+        ranked = sorted(results, key=lambda rr: rr.estimated_total_time_from_60ft_s, reverse=True)
+    else:
+        ranked = sorted(results, key=lambda rr: rr.sink_rate_mps)
+
     print("\nTop 5 designs")
     print("-------------")
-    for i, r in enumerate(sorted(results, key=lambda rr: rr.sink_rate_mps)[:n], start=1):
+    for i, r in enumerate(ranked[:n], start=1):
         print(
             f"{i:>2d}. {r.airfoil_name:10s} reflex={r.reflex_deg:+.1f} deg | "
-            f"sink={r.sink_rate_mps:.3f} m/s | time60ft={r.estimated_time_from_60ft_s:.2f} s | "
+            f"sink={r.sink_rate_mps:.3f} m/s | steady60ft={r.estimated_time_from_60ft_s:.2f} s | "
+            f"totalProxy60ft={r.estimated_total_time_from_60ft_s:.2f} s | "
             f"span={r.span_m:.3f} m | area={r.area_m2:.4f} m^2 | "
             f"CG={100 * r.cg_fraction_mac:.1f}% MAC"
         )

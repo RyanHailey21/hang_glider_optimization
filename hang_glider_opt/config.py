@@ -72,6 +72,11 @@ POLAR_RES = np.geomspace(2e4, 3e5, 9)
 # Set True to only generate/load cached polars and then exit.
 PRECOMPUTE_POLARS_ONLY = False
 
+# Persistent cache for solved optimization cases (airfoil+reflex+config signature).
+USE_RESULT_CACHE = True
+FORCE_REGENERATE_RESULT_CACHE = False
+RESULT_CACHE_DIR = pathlib.Path("./result_cache")
+
 # NeuralFoil cache controls.
 NEURALFOIL_MODEL_SIZE = "large"
 USE_NEURALFOIL_POLARS_IN_3D = True
@@ -83,8 +88,22 @@ USE_XFOIL_POLARS_IN_3D = False
 # If True, print progress
 VERBOSE = True
 
+# Objective mode:
+# - "sink_rate": classic steady-trim sink-rate optimization
+# - "drop_time_with_accel": includes an altitude cost to accelerate from low launch speed
+OBJECTIVE_MODE = "drop_time_with_accel"
+
+# Low-speed launch proxy used when OBJECTIVE_MODE == "drop_time_with_accel"
+LAUNCH_SPEED_MPS = 0.3
+MIN_REMAINING_ALTITUDE_M = 1.0
+
+# Save a simple geometry plot for the winning airfoil.
+PLOT_WINNER_AIRFOIL = True
+WINNER_AIRFOIL_PLOT_PATH = pathlib.Path("./outputs/winner_airfoil.png")
+
 # Elevon starts at this span fraction and extends to tip.
 ELEVON_START_SPAN_FRACTION = 0.60
+ELEVON_HINGE_POINT_FRACTION = 0.70
 
 # ----------------------------
 # Optimization bounds

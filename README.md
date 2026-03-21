@@ -19,6 +19,9 @@ Subject to:
 Objective:
 - Minimize estimated sink rate `V * D / W`
 
+Note on low-speed launch:
+- You can switch to a low-speed-aware objective (`drop_time_with_accel`) that penalizes altitude spent accelerating from near-zero launch speed before steady glide.
+
 ## Project Layout
 
 - `main.py`: Thin entrypoint
@@ -66,12 +69,23 @@ Edit `hang_glider_opt/config.py`:
   - `BUILTIN_AIRFOIL_FALLBACKS`
 - Reflex candidates:
   - `REFLEX_CANDIDATES_DEG`
+- Objective model:
+  - `OBJECTIVE_MODE` (`"sink_rate"` or `"drop_time_with_accel"`)
+  - `LAUNCH_SPEED_MPS`
+  - `MIN_REMAINING_ALTITUDE_M`
 - Polar generation/caching:
   - `GENERATE_NEURALFOIL_POLARS`
   - `USE_NEURALFOIL_POLARS_IN_3D`
   - `GENERATE_XFOIL_POLARS`
   - `FORCE_REGENERATE_POLAR_CACHE`
   - `POLAR_ALPHAS_DEG`, `POLAR_RES`
+- Optimization result caching:
+  - `USE_RESULT_CACHE`
+  - `FORCE_REGENERATE_RESULT_CACHE`
+  - `RESULT_CACHE_DIR`
+- Winner geometry plotting:
+  - `PLOT_WINNER_AIRFOIL`
+  - `WINNER_AIRFOIL_PLOT_PATH`
 - Bounds and stability:
   - `SPAN_BOUNDS_M`, `ROOT_CHORD_BOUNDS_M`, etc.
   - `MIN_STATIC_STABILITY_CMA`
@@ -84,6 +98,8 @@ The loader validates cache shape and rejects non-finite values (`NaN`, `Inf`). I
 
 If you suspect stale/corrupt caches, set:
 - `FORCE_REGENERATE_POLAR_CACHE = True`
+
+Optimization case results are cached in `./result_cache` so repeated runs can reuse previous solve outputs.
 
 ## Common Errors
 
@@ -109,4 +125,3 @@ If using XFoil mode (`GENERATE_XFOIL_POLARS = True`), ensure `XFOIL_COMMAND` poi
 - Keep all tunable constants in `config.py`.
 - Add new constraints/objective terms in one place and keep reporting fields synchronized with `DesignResult`.
 - Prefer adding small tests around parser/caching logic before changing aero data plumbing.
-

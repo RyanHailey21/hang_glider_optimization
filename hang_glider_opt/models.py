@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import Any, Dict
+
 
 
 @dataclass
@@ -30,3 +32,16 @@ class DesignResult:
     Cma: float
     sink_rate_mps: float
     estimated_time_from_60ft_s: float
+    accel_height_loss_m: float = 0.0
+    estimated_total_time_from_60ft_s: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DesignResult":
+        payload = dict(data)
+        steady_time = float(payload.get("estimated_time_from_60ft_s", 0.0))
+        payload.setdefault("accel_height_loss_m", 0.0)
+        payload.setdefault("estimated_total_time_from_60ft_s", steady_time)
+        return cls(**payload)

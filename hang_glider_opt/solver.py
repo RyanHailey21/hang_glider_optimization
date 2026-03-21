@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 import aerosandbox as asb
+import aerosandbox.numpy as np
 
 from .aircraft import make_airplane
 from .config import (
@@ -10,7 +11,10 @@ from .config import (
     CG_FRACTION_BOUNDS,
     DIHEDRAL_BOUNDS_DEG,
     DROP_HEIGHT_M,
+    LAUNCH_SPEED_MPS,
+    MIN_REMAINING_ALTITUDE_M,
     MIN_STATIC_STABILITY_CMA,
+    OBJECTIVE_MODE,
     ROOT_CHORD_BOUNDS_M,
     SPAN_BOUNDS_M,
     SWEEP_BOUNDS_DEG,
@@ -114,6 +118,14 @@ def solve_one_case(
     # tan(gamma) ~= D/L ~= D/W, so sink ~= V * D / W
     sink_rate_mps = V * aero["D"] / weight_N
 
+    # Low-speed launch proxy: altitude spent accelerating from launch speed to trim speed.
+    accel_height_loss_m = (V**2 - LAUNCH_SPEED_MPS**2) / (2 * 9.81)
+    accel_height_loss_m = np.fmax(accel_height_loss_m, 0.0)
+    remaining_altitude_m = DROP_HEIGHT_M - accel_height_loss_m
+    opti.subject_to(remaining_altitude_m >= MIN_REMAINING_ALTITUDE_M)
+
+    total_time_proxy_s = remaining_altitude_m / sink_rate_mps
+
     # Small regularization terms keep ugly edge solutions away
     reg = 1e-3 * (
         (washout_deg - 3.0) ** 2
@@ -121,7 +133,11 @@ def solve_one_case(
         + (sweep_deg - 20.0) ** 2 / 100
     )
 
-    opti.minimize(sink_rate_mps + reg)
+    if OBJECTIVE_MODE == "drop_time_with_accel":
+        # Maximize total time proxy by minimizing its negative.
+        opti.minimize(-total_time_proxy_s + reg)
+    else:
+        opti.minimize(sink_rate_mps + reg)
 
     # Solver options
     p_opts = {}
@@ -165,13 +181,16 @@ def solve_one_case(
         Cma=float(sol(aero["Cma"])),
         sink_rate_mps=float(sol(sink_rate_mps)),
         estimated_time_from_60ft_s=float(DROP_HEIGHT_M / sol(sink_rate_mps)),
+        accel_height_loss_m=float(sol(accel_height_loss_m)),
+        estimated_total_time_from_60ft_s=float(sol(total_time_proxy_s)),
     )
 
     if VERBOSE:
         print(
             f"[OK]   {airfoil_name:10s} reflex={reflex_deg:+.1f} deg | "
             f"sink={result.sink_rate_mps:.3f} m/s | "
-            f"time60ft={result.estimated_time_from_60ft_s:.2f} s | "
+            f"steady60ft={result.estimated_time_from_60ft_s:.2f} s | "
+            f"totalProxy60ft={result.estimated_total_time_from_60ft_s:.2f} s | "
             f"span={result.span_m:.3f} m area={result.area_m2:.4f} m^2 | "
             f"Cma={result.Cma:.4f}"
         )
